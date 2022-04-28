@@ -51,7 +51,8 @@ namespace ParamStructGenerator
                         Console.WriteLine("done");
                     }
 
-                    sw.WriteLine("\n#endif");
+                    sw.WriteLine();
+                    sw.WriteLine("#endif");
                 }
             }
         }
