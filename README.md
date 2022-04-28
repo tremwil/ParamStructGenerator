@@ -1,7 +1,7 @@
 # ParamStructGenerator
 Automatically generate C structs from XML paramdefs. Super untested, the only thing I made sure of is that they compiled with msvc. 
 
-# Download the headers
+# Download the headers (ER paramdefs only)
 ### [Japanese names/descriptions](https://github.com/tremwil/ParamStructGenerator/blob/master/paramdefs_jp.zip?raw=true)
 ### [English-Japanese names/descriptions (auto-translated)](https://github.com/tremwil/ParamStructGenerator/blob/master/paramdefs_en.zip?raw=true)
 
