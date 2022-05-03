@@ -22,39 +22,20 @@ namespace ParamStructGenerator
                 InitialDirectory = Environment.CurrentDirectory
             };
             if (diagFolder.ShowDialog() != CommonFileDialogResult.Ok) { return; }
-            string sourceFolder = diagFolder.FileName;
+            string paramdefFolder = diagFolder.FileName;
 
+            diagFolder.IsFolderPicker = false;
+            diagFolder.Title = "Select game regulation file";
+            if (diagFolder.ShowDialog() != CommonFileDialogResult.Ok) { return; }
+            string regulationPath = diagFolder.FileName;
+
+            diagFolder.IsFolderPicker = true;
             diagFolder.Title = "Select output directory";
             if (diagFolder.ShowDialog() != CommonFileDialogResult.Ok) { return; }
             string outputFolder = diagFolder.FileName;
 
-            using (FileStream fs = File.Open(Path.Combine(outputFolder, "paramdefs.h"), FileMode.Create, FileAccess.Write))
-            {
-                using (StreamWriter sw = new StreamWriter(fs))
-                {
-                    sw.Write(@"/* NOTE: AUTO-GENERATED CODE. Modify at your own risk. */
-#pragma once
-#ifndef _PARAMDEFS_H
-#define _PARAMDEFS_H
-
-");
-
-                    foreach (string file in Directory.GetFiles(sourceFolder, "*.xml"))
-                    {
-                        string structName = Path.GetFileNameWithoutExtension(file);
-                        Console.Write($"Generating {structName}.h...");
-
-                        PARAMDEF def = PARAMDEF.XmlDeserialize(file);
-                        ParamStructGenerator.GenerateFile(outputFolder, structName, def, true);
-
-                        sw.WriteLine($"#include \"{structName}.h\"");
-                        Console.WriteLine("done");
-                    }
-
-                    sw.WriteLine();
-                    sw.WriteLine("#endif");
-                }
-            }
+            LibraryGen gen = new LibraryGen() { CodeGen = new CppParamCodeGen() };
+            gen.GenerateCode(regulationPath, paramdefFolder, outputFolder);
         }
     }
 }

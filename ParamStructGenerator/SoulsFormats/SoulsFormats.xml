@@ -1206,12 +1206,12 @@
         </member>
         <member name="F:SoulsFormats.BHD5.Game.DarkSouls3">
             <summary>
-            Dark Souls 3 on PC.
+            Dark Souls 3 and Sekiro on PC.
             </summary>
         </member>
-        <member name="F:SoulsFormats.BHD5.Game.Sekiro">
+        <member name="F:SoulsFormats.BHD5.Game.EldenRing">
             <summary>
-            Sekiro on PC.
+            Elden Ring on PC.
             </summary>
         </member>
         <member name="T:SoulsFormats.BHD5.Bucket">
@@ -1469,21 +1469,6 @@
             Unknown.
             </summary>
         </member>
-        <member name="P:SoulsFormats.BTL.Light.Unk04">
-            <summary>
-            Unknown.
-            </summary>
-        </member>
-        <member name="P:SoulsFormats.BTL.Light.Unk08">
-            <summary>
-            Unknown.
-            </summary>
-        </member>
-        <member name="P:SoulsFormats.BTL.Light.Unk0C">
-            <summary>
-            Unknown.
-            </summary>
-        </member>
         <member name="P:SoulsFormats.BTL.Light.Name">
             <summary>
             Name of this light.
@@ -1671,37 +1656,42 @@
         </member>
         <member name="P:SoulsFormats.BTL.Light.UnkC8">
             <summary>
-            Unknown; only in Sekiro.
+            Unknown; not present before Sekiro.
             </summary>
         </member>
         <member name="P:SoulsFormats.BTL.Light.UnkCC">
             <summary>
-            Unknown; only in Sekiro.
+            Unknown; not present before Sekiro.
             </summary>
         </member>
         <member name="P:SoulsFormats.BTL.Light.UnkD0">
             <summary>
-            Unknown; only in Sekiro.
+            Unknown; not present before Sekiro.
             </summary>
         </member>
         <member name="P:SoulsFormats.BTL.Light.UnkD4">
             <summary>
-            Unknown; only in Sekiro.
+            Unknown; not present before Sekiro.
             </summary>
         </member>
         <member name="P:SoulsFormats.BTL.Light.UnkD8">
             <summary>
-            Unknown; only in Sekiro.
+            Unknown; not present before Sekiro.
             </summary>
         </member>
         <member name="P:SoulsFormats.BTL.Light.UnkDC">
             <summary>
-            Unknown; only in Sekiro.
+            Unknown; not present before Sekiro.
             </summary>
         </member>
         <member name="P:SoulsFormats.BTL.Light.UnkE0">
             <summary>
-            Unknown; only in Sekiro.
+            Unknown; not present before Sekiro.
+            </summary>
+        </member>
+        <member name="P:SoulsFormats.BTL.Light.UnkE4">
+            <summary>
+            Unknown; not present before Sekiro.
             </summary>
         </member>
         <member name="M:SoulsFormats.BTL.Light.#ctor">
@@ -2189,6 +2179,11 @@
             DCX header, deflate compression. Used in Sekiro.
             </summary>
         </member>
+        <member name="F:SoulsFormats.DCX.Type.DCX_DFLT_11000_44_9_15">
+            <summary>
+            DCX header, deflate compression. Used in the ER regulation.
+            </summary>
+        </member>
         <member name="F:SoulsFormats.DCX.Type.DCX_KRAK">
             <summary>
             DCX header, Oodle compression. Used in Sekiro.
@@ -2227,6 +2222,11 @@
         <member name="F:SoulsFormats.DCX.DefaultType.Sekiro">
             <summary>
             Most common compression format for Sekiro.
+            </summary>
+        </member>
+        <member name="F:SoulsFormats.DCX.DefaultType.EldenRing">
+            <summary>
+            Most common compression format for Elden Ring.
             </summary>
         </member>
         <member name="T:SoulsFormats.DRB">
@@ -5586,6 +5586,106 @@
             Points making up the mesh's shape.
             </summary>
         </member>
+        <member name="T:SoulsFormats.FMB">
+            <summary>
+            "expression" files introduced in Elden Ring. Extension: .expb
+            </summary>
+        </member>
+        <member name="P:SoulsFormats.FMB.Unk20">
+            <summary>
+            Unknown.
+            </summary>
+        </member>
+        <member name="P:SoulsFormats.FMB.Entries">
+            <summary>
+            Entries in this FMB.
+            </summary>
+        </member>
+        <member name="M:SoulsFormats.FMB.#ctor">
+            <summary>
+            Creates a default FMB.
+            </summary>
+        </member>
+        <member name="M:SoulsFormats.FMB.Is(SoulsFormats.BinaryReaderEx)">
+            <summary>
+            Checks whether the data appears to be a file of this format.
+            </summary>
+        </member>
+        <member name="M:SoulsFormats.FMB.Read(SoulsFormats.BinaryReaderEx)">
+            <summary>
+            Deserializes file data from a stream.
+            </summary>
+        </member>
+        <member name="M:SoulsFormats.FMB.Write(SoulsFormats.BinaryWriterEx)">
+            <summary>
+            Serializes file data to a stream.
+            </summary>
+        </member>
+        <member name="T:SoulsFormats.FMB.Entry">
+            <summary>
+            An entry with no additional data.
+            </summary>
+        </member>
+        <member name="P:SoulsFormats.FMB.Entry.Type">
+            <summary>
+            Type of the entry.
+            </summary>
+        </member>
+        <member name="M:SoulsFormats.FMB.Entry.ToString">
+            <summary>
+            Returns a string representation of the entry.
+            </summary>
+        </member>
+        <member name="T:SoulsFormats.FMB.StringEntry">
+            <summary>
+            An entry with an additional string.
+            </summary>
+        </member>
+        <member name="P:SoulsFormats.FMB.StringEntry.Value">
+            <summary>
+            The additional value of the entry.
+            </summary>
+        </member>
+        <member name="M:SoulsFormats.FMB.StringEntry.ToString">
+            <summary>
+            Returns a string representation of the entry.
+            </summary>
+        </member>
+        <member name="T:SoulsFormats.FMB.DoubleEntry">
+            <summary>
+            An entry with an additional double.
+            </summary>
+        </member>
+        <member name="P:SoulsFormats.FMB.DoubleEntry.Value">
+            <summary>
+            The additional value of the entry.
+            </summary>
+        </member>
+        <member name="M:SoulsFormats.FMB.DoubleEntry.ToString">
+            <summary>
+            Returns a string representation of the entry.
+            </summary>
+        </member>
+        <member name="T:SoulsFormats.FMB.Double2Entry">
+            <summary>
+            An entry with two additional doubles.
+            </summary>
+        </member>
+        <member name="P:SoulsFormats.FMB.Double2Entry.Value1">
+            <summary>
+            The first additional value of the entry.
+            </summary>
+        </member>
+        <member name="P:SoulsFormats.FMB.Double2Entry.Value2">
+            <summary>
+            The second additional value of the entry.
+            </summary>
+        </member>
+        <member name="M:SoulsFormats.FMB.Double2Entry.ToString">
+            <summary>
+            Returns a string representation of the entry.
+            </summary>
+        </member>
         <member name="T:SoulsFormats.FMG">
             <summary>
             A simple string container used throughout the series.
@@ -6214,6 +6314,161 @@
         <member name="M:SoulsFormats.LUAINFO.Goal.#ctor(System.Int32,System.String,System.Boolean,System.Boolean,System.String)">
             <summary>
             Creates a new Goal with the specified values.
+            </summary>
+        </member>
+        <member name="T:SoulsFormats.MATBIN">
+            <summary>
+            A material config format introduced in Elden Ring. Extension: .matbin
+            </summary>
+        </member>
+        <member name="P:SoulsFormats.MATBIN.ShaderPath">
+            <summary>
+            Network path to the shader source file.
+            </summary>
+        </member>
+        <member name="P:SoulsFormats.MATBIN.SourcePath">
+            <summary>
+            Network path to the material source file, either a matxml or an mtd.
+            </summary>
+        </member>
+        <member name="P:SoulsFormats.MATBIN.Key">
+            <summary>
+            Unknown, presumed to be an identifier for documentation.
+            </summary>
+        </member>
+        <member name="P:SoulsFormats.MATBIN.Params">
+            <summary>
+            Parameters set by this material.
+            </summary>
+        </member>
+        <member name="P:SoulsFormats.MATBIN.Samplers">
+            <summary>
+            Texture samplers used by this material.
+            </summary>
+        </member>
+        <member name="M:SoulsFormats.MATBIN.#ctor">
+            <summary>
+            Creates an empty MATBIN.
+            </summary>
+        </member>
+        <member name="M:SoulsFormats.MATBIN.Is(SoulsFormats.BinaryReaderEx)">
+            <summary>
+            Checks whether the data appears to be a file of this format.
+            </summary>
+        </member>
+        <member name="M:SoulsFormats.MATBIN.Read(SoulsFormats.BinaryReaderEx)">
+            <summary>
+            Deserializes file data from a stream.
+            </summary>
+        </member>
+        <member name="M:SoulsFormats.MATBIN.Write(SoulsFormats.BinaryWriterEx)">
+            <summary>
+            Serializes file data to a stream.
+            </summary>
+        </member>
+        <member name="T:SoulsFormats.MATBIN.ParamType">
+            <summary>
+            Available types for param values.
+            </summary>
+        </member>
+        <member name="F:SoulsFormats.MATBIN.ParamType.Bool">
+            <summary>
+            (bool) A 1-byte boolean.
+            </summary>
+        </member>
+        <member name="F:SoulsFormats.MATBIN.ParamType.Int">
+            <summary>
+            (int) A 32-bit integer. 
+            </summary>
+        </member>
+        <member name="F:SoulsFormats.MATBIN.ParamType.Int2">
+            <summary>
+            (int[2]) Two 32-bit integers.
+            </summary>
+        </member>
+        <member name="F:SoulsFormats.MATBIN.ParamType.Float">
+            <summary>
+            (float) A 32-bit float.
+            </summary>
+        </member>
+        <member name="F:SoulsFormats.MATBIN.ParamType.Float2">
+            <summary>
+            (float[2]) Two 32-bit floats.
+            </summary>
+        </member>
+        <member name="F:SoulsFormats.MATBIN.ParamType.Float3">
+            <summary>
+            (float[3]) Three 32-bit floats.
+            </summary>
+        </member>
+        <member name="F:SoulsFormats.MATBIN.ParamType.Float4">
+            <summary>
+            (float[4]) Four 32-bit floats.
+            </summary>
+        </member>
+        <member name="F:SoulsFormats.MATBIN.ParamType.Float5">
+            <summary>
+            (float[5]) Five 32-bit floats.
+            </summary>
+        </member>
+        <member name="T:SoulsFormats.MATBIN.Param">
+            <summary>
+            A parameter set per material.
+            </summary>
+        </member>
+        <member name="P:SoulsFormats.MATBIN.Param.Name">
+            <summary>
+            The name of the parameter.
+            </summary>
+        </member>
+        <member name="P:SoulsFormats.MATBIN.Param.Value">
+            <summary>
+            The value to be used.
+            </summary>
+        </member>
+        <member name="P:SoulsFormats.MATBIN.Param.Key">
+            <summary>
+            Unknown, presumed to be an identifier for documentation.
+            </summary>
+        </member>
+        <member name="P:SoulsFormats.MATBIN.Param.Type">
+            <summary>
+            The type of value provided.
+            </summary>
+        </member>
+        <member name="M:SoulsFormats.MATBIN.Param.#ctor">
+            <summary>
+            Creates a default Param.
+            </summary>
+        </member>
+        <member name="T:SoulsFormats.MATBIN.Sampler">
+            <summary>
+            A texture sampler used by a material.
+            </summary>
+        </member>
+        <member name="P:SoulsFormats.MATBIN.Sampler.Type">
+            <summary>
+            The type of the sampler.
+            </summary>
+        </member>
+        <member name="P:SoulsFormats.MATBIN.Sampler.Path">
+            <summary>
+            An optional network path to the texture, if not specified in the FLVER.
+            </summary>
+        </member>
+        <member name="P:SoulsFormats.MATBIN.Sampler.Key">
+            <summary>
+            Unknown, presumed to be an identifier for documentation.
+            </summary>
+        </member>
+        <member name="P:SoulsFormats.MATBIN.Sampler.Unk14">
+            <summary>
+            Unknown; most likely to be the scale, but typically 0, 0.
+            </summary>
+        </member>
+        <member name="M:SoulsFormats.MATBIN.Sampler.#ctor">
+            <summary>
+            Creates a default Sampler.
             </summary>
         </member>
         <member name="T:SoulsFormats.MCG">
@@ -17747,6 +18002,60 @@
             The paramdef field that describes this cell.
             </summary>
         </member>
+        <member name="P:SoulsFormats.PARAM.Cell.Name">
+            <summary>
+            The name of this cell.
+            Added for Yapped due to the way the DataSource works
+            </summary>
+        </member>
+        <member name="P:SoulsFormats.PARAM.Cell.EditorName">
+            <summary>
+            The editor name of this cell.
+            Added for Yapped due to the way the DataSource works
+            </summary>
+        </member>
+        <member name="P:SoulsFormats.PARAM.Cell.Type">
+            <summary>
+            The type of this cell.
+            Added for Yapped due to the way the DataSource works
+            </summary>
+        </member>
+        <member name="P:SoulsFormats.PARAM.Cell.ParamRef1">
+            <summary>
+            Reference 1 for the cell
+            Added for Yapped due to the way the DataSource works
+            </summary>
+        </member>
+        <member name="P:SoulsFormats.PARAM.Cell.ParamRef2">
+            <summary>
+            Reference 2 for the cell
+            Added for Yapped due to the way the DataSource works
+            </summary>
+        </member>
+        <member name="P:SoulsFormats.PARAM.Cell.ParamRef3">
+            <summary>
+            Reference 3 for the cell
+            Added for Yapped due to the way the DataSource works
+            </summary>
+        </member>
+        <member name="P:SoulsFormats.PARAM.Cell.ParamRef4">
+            <summary>
+            Reference 4 for the cell
+            Added for Yapped due to the way the DataSource works
+            </summary>
+        </member>
+        <member name="P:SoulsFormats.PARAM.Cell.ParamRef5">
+            <summary>
+            Reference 5 for the cell
+            Added for Yapped due to the way the DataSource works
+            </summary>
+        </member>
+        <member name="P:SoulsFormats.PARAM.Cell.ParamRef6">
+            <summary>
+            Reference 6 for the cell
+            Added for Yapped due to the way the DataSource works
+            </summary>
+        </member>
         <member name="P:SoulsFormats.PARAM.Cell.Value">
             <summary>
             The value of this cell.
@@ -17835,6 +18144,11 @@
         <member name="P:SoulsFormats.PARAM.Item(System.Int32)">
             <summary>
             Returns the first row with the given ID, or null if not found.
+            </summary>
+        </member>
+        <member name="M:SoulsFormats.PARAM.ToString">
+            <summary>
+            Returns a string representation of the PARAM.
             </summary>
         </member>
         <member name="T:SoulsFormats.PARAM.FormatFlags1">
@@ -18012,9 +18326,24 @@
             Unsigned 4-byte integer.
             </summary>
         </member>
+        <member name="F:SoulsFormats.PARAMDEF.DefType.b32">
+            <summary>
+            4-byte integer representing a boolean.
+            </summary>
+        </member>
         <member name="F:SoulsFormats.PARAMDEF.DefType.f32">
             <summary>
             Single-precision floating point value.
+            </summary>
+        </member>
+        <member name="F:SoulsFormats.PARAMDEF.DefType.angle32">
+            <summary>
+            Single-precision floating point value representing an angle.
+            </summary>
+        </member>
+        <member name="F:SoulsFormats.PARAMDEF.DefType.f64">
+            <summary>
+            Double-precision floating point value.
             </summary>
         </member>
         <member name="F:SoulsFormats.PARAMDEF.DefType.dummy8">
@@ -18127,6 +18456,36 @@
             Fields are ordered by this value in the editor; not present before version 104.
             </summary>
         </member>
+        <member name="P:SoulsFormats.PARAMDEF.Field.ParamRef1">
+            <summary>
+            Yapped - Reference 1
+            </summary>
+        </member>
+        <member name="P:SoulsFormats.PARAMDEF.Field.ParamRef2">
+            <summary>
+            Yapped - Reference 2
+            </summary>
+        </member>
+        <member name="P:SoulsFormats.PARAMDEF.Field.ParamRef3">
+            <summary>
+            Yapped - Reference 3
+            </summary>
+        </member>
+        <member name="P:SoulsFormats.PARAMDEF.Field.ParamRef4">
+            <summary>
+            Yapped - Reference 4
+            </summary>
+        </member>
+        <member name="P:SoulsFormats.PARAMDEF.Field.ParamRef5">
+            <summary>
+            Yapped - Reference 5
+            </summary>
+        </member>
+        <member name="P:SoulsFormats.PARAMDEF.Field.ParamRef6">
+            <summary>
+            Yapped - Reference 6
+            </summary>
+        </member>
         <member name="P:SoulsFormats.PARAMDEF.Field.UnkB8">
             <summary>
             Unknown; appears to be an identifier. May be null, only supported in versions >= 200, only present in version 202 so far.
@@ -18147,7 +18506,7 @@
             Creates a Field with placeholder values.
             </summary>
         </member>
-        <member name="M:SoulsFormats.PARAMDEF.Field.#ctor(SoulsFormats.PARAMDEF.DefType,System.String)">
+        <member name="M:SoulsFormats.PARAMDEF.Field.#ctor(SoulsFormats.PARAMDEF,SoulsFormats.PARAMDEF.DefType,System.String)">
             <summary>
             Creates a Field with the given type, name, and appropriate default values.
             </summary>
@@ -18174,12 +18533,17 @@
         </member>
         <member name="P:SoulsFormats.PARAMDEF.Unicode">
             <summary>
-            If true, strings are written as UTF-16; if false, as Shift-JIS.
+            If true, certain strings are written as UTF-16; if false, as Shift-JIS.
             </summary>
         </member>
         <member name="P:SoulsFormats.PARAMDEF.FormatVersion">
             <summary>
             Determines format of the file.
+            </summary>
+        </member>
+        <member name="P:SoulsFormats.PARAMDEF.VariableEditorValueTypes">
+            <summary>
+            Whether field default, minimum, maximum, and increment may be variable type. If false, they are always floats.
             </summary>
         </member>
         <member name="P:SoulsFormats.PARAMDEF.Fields">
@@ -18189,7 +18553,7 @@
         </member>
         <member name="M:SoulsFormats.PARAMDEF.#ctor">
             <summary>
-            Creates a new PARAMDEF formatted for DS1.
+            Creates a PARAMDEF formatted for DS1.
             </summary>
         </member>
         <member name="M:SoulsFormats.PARAMDEF.Read(SoulsFormats.BinaryReaderEx)">
@@ -18210,6 +18574,11 @@
         <member name="M:SoulsFormats.PARAMDEF.GetRowSize">
             <summary>
             Calculates the size of cell data for each row.
+            </summary>
+        </member>
+        <member name="M:SoulsFormats.PARAMDEF.ToString">
+            <summary>
+            Returns a string representation of the PARAMDEF.
             </summary>
         </member>
         <member name="M:SoulsFormats.PARAMDEF.XmlDeserialize(System.String)">
@@ -19987,6 +20356,16 @@
         <member name="M:SoulsFormats.SFUtil.EncryptDS3Regulation(System.String,SoulsFormats.BND4)">
             <summary>
             Repacks and encrypts DS3's regulation BND4 to the specified path.
+            </summary>
+        </member>
+        <member name="M:SoulsFormats.SFUtil.DecryptERRegulation(System.String)">
+            <summary>
+            Decrypts and unpacks ER's regulation BND4 from the specified path.
+            </summary>
+        </member>
+        <member name="M:SoulsFormats.SFUtil.EncryptERRegulation(System.String,SoulsFormats.BND4)">
+            <summary>
+            Repacks and encrypts ER's regulation BND4 to the specified path.
             </summary>
         </member>
         <member name="T:SoulsFormats.SoulsFile`1">
