@@ -10,26 +10,21 @@ namespace ParamStructGenerator
     public class CParamCodeGen : IParamCodeGen
     {
         public string FileExtension => ".h";
+        public bool MultiFile = true;
 
         public string GenParamCode(PARAM param, string name, bool writeComments)
         {
             StringBuilder sb = new StringBuilder();
 
-            sb.AppendLine($@"/* This file was automatically generated from regulation data. */
-#ifndef _PARAM_{name}_H
+            if (writeComments && MultiFile) sb.AppendLine("/* This file was automatically generated from regulation data. */");
+            if (MultiFile) sb.AppendLine($@"#ifndef _PARAM_{name}_H
 #define _PARAM_{name}_H
 #pragma once
-#include ""defs/{param.ParamType}.h""
+#include ""defs/{param.ParamType}.h\""
 ");
             if (writeComments) sb.AppendLine($@"// Type: {param.ParamType}");
-            sb.AppendLine($@"typedef struct _{name} {{
-    struct _{param.ParamType} data;
-}} {name};
-");
-            // if (param.DetectedSize != -1)
-            //     sb.AppendLine($"static_assert(sizeof({name}) == {param.DetectedSize}, \"{name} paramdef size does not match detected size\")");
-
-            sb.AppendLine("#endif");
+            sb.AppendLine($"typedef {param.ParamType} {name};");
+            if (MultiFile) sb.AppendLine("#endif");
             return sb.ToString();
         }
 
@@ -37,8 +32,9 @@ namespace ParamStructGenerator
         {
             StringBuilder sb = new StringBuilder();
 
-            sb.AppendLine($@"/* This file was automatically generated from XML paramdefs. */
-#ifndef _PARAMDEF_{def.ParamType}_H
+            if (writeComments && MultiFile) sb.AppendLine("/* This file was automatically generated from XML paramdefs. */");
+            
+            if (MultiFile) sb.AppendLine($@"#ifndef _PARAMDEF_{def.ParamType}_H
 #define _PARAMDEF_{def.ParamType}_H
 #pragma once
 #include <inttypes.h>
@@ -51,11 +47,11 @@ namespace ParamStructGenerator
 // Format Version: {def.FormatVersion}");
             }
 
-            sb.AppendLine($"typedef struct _{def.ParamType} {{");
+            sb.AppendLine($"struct _{def.ParamType} {{");
 
             foreach (PARAMDEF.Field field in def.Fields)
             {
-                sb.AppendLine();
+                if (writeComments) sb.AppendLine();
 
                 if (writeComments)
                 {
@@ -85,9 +81,9 @@ namespace ParamStructGenerator
                 sb.AppendLine($"{fieldBuilder};");
             }
 
-            sb.AppendLine($@"}} {def.ParamType};
-
-#endif");
+            sb.AppendLine($@"}};
+typedef struct _{def.ParamType} {def.ParamType};");
+            if (MultiFile) sb.AppendLine("#endif");
             return sb.ToString();
         }
 

@@ -54,6 +54,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CParamCodeGen.cs" />
+    <Compile Include="CESingleHeaderGen.cs" />
     <Compile Include="LibraryGen.cs" />
     <Compile Include="CppParamCodeGen.cs" />
     <Compile Include="IParamCodeGen.cs" />
@@ -64,6 +65,10 @@
   <ItemGroup>
     <None Include="App.config" />
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="CEParamUtilsLib\CParamUtils.c" />
+    <Content Include="CEParamUtilsLib\CParamUtils.h" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
