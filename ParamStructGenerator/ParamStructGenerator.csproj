@@ -71,4 +71,7 @@
     <Content Include="CEParamUtilsLib\CParamUtils.h" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <PropertyGroup>
+    <PostBuildEvent>xcopy $(ProjectDir)CEParamUtilsLib $(TargetDir)CEParamUtilsLib\</PostBuildEvent>
+  </PropertyGroup>
 </Project>
