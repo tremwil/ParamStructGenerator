@@ -117,7 +117,7 @@ typedef short wchar_t;
                             int offset = fieldBitOffset / 64;
                             int maskBegin = fieldBitOffset % 64;
                             int maskSize = Math.Min(64 - (fieldBitOffset % 64), fieldBitSize);
-                            ulong mask = unchecked((1ul << maskSize) - 1ul) << maskBegin;
+                            ulong mask = unchecked((1ul << maskSize) + (1ul >> maskSize) - 1ul) << maskBegin;
                             bitmasks.Add(new FieldBitmask() { offset = (uint)offset * 8, bitmask = mask, uid = numAddedField });
 
                             fieldBitSize -= maskSize;

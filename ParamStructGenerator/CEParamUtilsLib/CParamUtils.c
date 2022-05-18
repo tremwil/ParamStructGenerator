@@ -409,7 +409,7 @@ void asm_defs()
 }
 extern void memxor_simd(void* dest, void* src, size_t len);
 extern void memor_simd(void* dest, void* src, size_t len);
-extern void memandn_simd(void* mem, size_t len);
+extern void memandn_simd(void* dest, void* src, size_t len);
 extern void memand_simd(void* dest, void* src, size_t len);
 
 #define align16(n) (((n) + 0xF) & ~(uint64_t)0xF)
@@ -481,7 +481,7 @@ mem_diff* mds_push_end(mem_diff_stack* mds, uint32_t patch_uid)
 
 	// If the top block has the same patch_uid, merge them instead of creating a new block
 	if (mds->diff_stack_top != NULL && mds->diff_stack_top->patch_uid == patch_uid)
-		memxor_simd(mds->diff_bitmasks[i], mds->temp_buffer, mds->region_size);
+		memxor_simd(mds->diff_stack_top, mds->temp_buffer, mds->region_size);
 	// Otherwise, allocate a new block
 	else
 	{
@@ -501,7 +501,7 @@ mem_diff* mds_push_end(mem_diff_stack* mds, uint32_t patch_uid)
 		uint8_t* diff_mask = (uint8_t*)mds->diff_stack_top->diff_mask + align_offset;
 		uint8_t* field_mask = (uint8_t*)mds->diff_stack_top->field_mask + align_offset;
 
-		for (int i = 0; defs[i].uid != 0; )
+		for (int i = 0; fields[i].uid != 0; i++)
 		{
 			if (*(uint64_t*)(diff_mask + fields[i].offset) & fields[i].bitmask)
 			{
@@ -511,7 +511,7 @@ mem_diff* mds_push_end(mem_diff_stack* mds, uint32_t patch_uid)
 					*(uint64_t*)(field_mask + fields[j].offset) |= fields[j].bitmask;
 
 				while (fields[i].uid == fields[++i].uid)
-					*(uint64_t*)(field_mask + defs[i].offset) |= defs[i].bitmask;
+					*(uint64_t*)(field_mask + fields[i].offset) |= fields[i].bitmask;
 			}
 		}
 	}
@@ -567,6 +567,9 @@ BOOL mds_restore(mem_diff_stack* mds, mem_diff* diff)
 }
 
 /* Param Patcher API */
+
+// Array of mem diffs, indexed by param index, row index
+mem_diff_stack** MEM_DIFFS = NULL;
 
 // Represents a collection of param patches under a given name
 typedef struct _named_patch
@@ -633,7 +636,7 @@ extern void CParamUtils_Internal_FinalizeRowPatch(named_patch* patch, int32_t pa
 		{
 			patch->diffs_cap *= 2;
 			patch->diffs = realloc(patch->diffs, sizeof(mem_diff*) * patch->diffs_cap);
-			patch->diffs = realloc(patch->diff_stacks, sizeof(mem_diff_stack*) * patch->diffs_cap);
+			patch->diff_stacks = realloc(patch->diff_stacks, sizeof(mem_diff_stack*) * patch->diffs_cap);
 		}
 		patch->diffs[patch->diffs_num] = diff;
 		patch->diff_stacks[patch->diffs_num++] = &MEM_DIFFS[param_index][row_index];
@@ -683,10 +686,7 @@ typedef struct _paramdef_metadata
 // Pointer to an array of paramdef metadata structs, set by an external lua script. 
 // The param patcher will still work without this data, but expect undefined behavior 
 // when attempting to resolve patches to the same field out-of-order.
-paramdef_metadata* PARAMDEF_META = NULL;
-
-// Array of mem diffs, indexed by param index, row index
-mem_diff_stack** MEM_DIFFS = NULL;
+extern paramdef_metadata PARAMDEF_META[1];
 
 // Search the paramdef metadata array for a field mask for the given paramdef. 
 // return NULL if not found.

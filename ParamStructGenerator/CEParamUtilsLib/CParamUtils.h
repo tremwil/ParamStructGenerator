@@ -103,7 +103,8 @@ extern void CParamUtils_Internal_ReleaseLock();
 #define ParamPatch(patch_name, param_name, row_id, body) { \
 	param_info* __p_info = CParamUtils_GetParamInfo(L ## #param_name); \
 	int32_t __row_index = CParamUtils_GetRowIndex(L ## #param_name, row_id); \
-	if (__p_info && __row_index != -1 && (void* __patch = CParamUtils_Internal_GetOrCreateNamedPatch(patch_name))) { \
+	void* __patch; \
+	if (__p_info && __row_index != -1 && (__patch = CParamUtils_Internal_GetOrCreateNamedPatch(patch_name))) { \
 		param_name* param = CParamUtils_Internal_BeginRowPatch(__p_info->index, __row_index); \
 		if (param) body; \
 		CParamUtils_Internal_FinalizeRowPatch(__patch, __p_info->index, __row_index); \
@@ -112,7 +113,9 @@ extern void CParamUtils_Internal_ReleaseLock();
 
 #define ParamPatchAll(patch_name, param_name, body) { \
 	param_info* __p_info = CParamUtils_GetParamInfo(L ## #param_name); \
-	if (__p_info && (uint16_t __num_rows =__p_info->table->num_rows) && (void* __patch = CParamUtils_Internal_GetOrCreateNamedPatch(patch_name))) { \
+	uint16_t __num_rows; \
+	void* __patch; \
+	if (__p_info && (__num_rows =__p_info->table->num_rows) && (__patch = CParamUtils_Internal_GetOrCreateNamedPatch(patch_name))) { \
 		for (uint16_t __row_index = 0; __row_index < __num_rows; __row_index++) { \
 			param_name* param = CParamUtils_Internal_BeginRowPatch(__p_info->index, __row_index); \
 			if (param) body; \
