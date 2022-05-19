@@ -72,18 +72,26 @@ extern BOOL CParamUtils_RowIterator(wchar_t* param_name, row_iter_func cb);
 // Get a pointer to processed param info given a game param. NULL if param doesn't exist.
 extern param_info* CParamUtils_GetParamInfo(wchar_t* param_name);
 
+// Like CParamUtils_GetParamInfo, but prints out an error message in the CE console on failure. 
+extern param_info* CParamUtils_GetParamInfoVerbose(wchar_t* param_name);
+
 // Return the index of a param row given it's row ID (-1 if not found).
 extern int32_t CParamUtils_GetRowIndex(wchar_t* param_name, uint64_t row_id);
+
+// Like CParamUtils_GetRowIndex, but prints out an error message in the CE console on failure. 
+extern int32_t CParamUtils_GetRowIndexVerbose(wchar_t* param_name, uint64_t row_id);
 
 // Get a pointer to the row data for a given param, by row ID. NULL if ID/param doesn't exist.
 extern void* CParamUtils_GetRowData(wchar_t* param_name, uint64_t row_id);
 
-/* Param Patcher internal calls */
+// Like CParamUtils_GetRowData, but prints out an error message in the CE console on failure. 
+extern void* CParamUtils_GetRowDataVerbose(wchar_t* param_name, uint64_t row_id);
 
-// Create a new named patch with the given name, or grab the one on the top of the stack 
-// if the name matches. 
-// If this patch already exists but is not at the top of the stack, will return a null pointer.
-extern void* CParamUtils_Internal_GetOrCreateNamedPatch(const char* name);
+/* Param Patcher internal calls, should never be used directly. Use the macros instead. */
+
+// If a previous call to BeginNamedPatch specified a valid name, returns the current patch object
+// instance. Otherwise, returns a null pointer.
+extern void* CParamUtils_Internal_GetPatchIns(BOOL debug);
 
 // Begin a memory patch, and return a pointer to the given param row's data.
 extern void* CParamUtils_Internal_BeginRowPatch(int32_t param_index, int32_t row_index);
@@ -92,30 +100,34 @@ extern void* CParamUtils_Internal_BeginRowPatch(int32_t param_index, int32_t row
 extern void CParamUtils_Internal_FinalizeRowPatch(void* h_patch, int32_t param_index, int32_t row_index);
 
 // Attempts to restore a named param patch. Returns FALSE if the patch was not found.
-extern BOOL CParamUtils_Internal_RestorePatch(const char* name);
+extern BOOL CParamUtils_Internal_RestorePatch(const char* name, BOOL debug);
 
-// Acquire the internal param patcher lock. This must be called before defining patches.
-extern void CParamUtils_Internal_AcquireLock();
+// Declare a new named param patch. This acquires a critical section, so CParamUtils_Internal_FinalizeNamedPatch 
+// MUST be called after all desired patches have been applied to release it.
+extern void CParamUtils_Internal_BeginNamedPatch(const char* name, BOOL debug);
 
-// Release the internal param patcher lock. This must called after defining patches.
-extern void CParamUtils_Internal_ReleaseLock();
+// Signify the current named patch is complete. Release the internal param patcher lock, and
+// prevents any future patches from being made under this name until the script is disabled. 
+extern void CParamUtils_Internal_FinalizeNamedPatch();
 
-#define ParamPatch(patch_name, param_name, row_id, body) { \
-	param_info* __p_info = CParamUtils_GetParamInfo(L ## #param_name); \
-	int32_t __row_index = CParamUtils_GetRowIndex(L ## #param_name, row_id); \
+/* Param Patcher macros */
+
+#define ParamPatch(param_name, row_id, body) { \
+	param_info* __p_info = CParamUtils_GetParamInfoVerbose(L ## #param_name); \
+	int32_t __row_index = CParamUtils_GetRowIndexVerbose(L ## #param_name, row_id); \
 	void* __patch; \
-	if (__p_info && __row_index != -1 && (__patch = CParamUtils_Internal_GetOrCreateNamedPatch(patch_name))) { \
+	if (__p_info && __row_index != -1 && (__patch = CParamUtils_Internal_GetPatchIns(1))) { \
 		param_name* param = CParamUtils_Internal_BeginRowPatch(__p_info->index, __row_index); \
 		if (param) body; \
 		CParamUtils_Internal_FinalizeRowPatch(__patch, __p_info->index, __row_index); \
 	} \
 }
 
-#define ParamPatchAll(patch_name, param_name, body) { \
-	param_info* __p_info = CParamUtils_GetParamInfo(L ## #param_name); \
+#define ParamPatchAll(param_name, body) { \
+	param_info* __p_info = CParamUtils_GetParamInfoVerbose(L ## #param_name); \
 	uint16_t __num_rows; \
 	void* __patch; \
-	if (__p_info && (__num_rows =__p_info->table->num_rows) && (__patch = CParamUtils_Internal_GetOrCreateNamedPatch(patch_name))) { \
+	if (__p_info && (__num_rows =__p_info->table->num_rows) && (__patch = CParamUtils_Internal_GetPatchIns(1))) { \
 		for (uint16_t __row_index = 0; __row_index < __num_rows; __row_index++) { \
 			param_name* param = CParamUtils_Internal_BeginRowPatch(__p_info->index, __row_index); \
 			if (param) body; \
@@ -124,8 +136,8 @@ extern void CParamUtils_Internal_ReleaseLock();
 	} \
 }
 
-#define ParamPatchBegin() CParamUtils_Internal_AcquireLock()
-#define ParamPatchEnd() CParamUtils_Internal_ReleaseLock()
-#define ParamRestore(patch_name) CParamUtils_Internal_RestorePatch(patch_name)
+#define ParamPatchBegin(name) CParamUtils_Internal_BeginNamedPatch(name, 1)
+#define ParamPatchEnd() CParamUtils_Internal_FinalizeNamedPatch()
+#define ParamRestore(name) CParamUtils_Internal_RestorePatch(name, 1)
 
 #endif

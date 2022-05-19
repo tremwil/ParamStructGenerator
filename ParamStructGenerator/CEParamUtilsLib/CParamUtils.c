@@ -26,6 +26,9 @@ extern size_t strlen(const char* str);
 extern int strcmp(const char* s1, const char* s2);
 extern int wcscmp(const wchar_t* s1, const wchar_t* s2);
 
+extern void* CELUA_ExecuteFunction(char* luacode, void* param);
+extern void CELUA_ExecuteFunctionAsync(char* luacode, void* param);
+
 typedef struct _CRITICAL_SECTION
 {
 	uint8_t reserved[40];
@@ -334,6 +337,33 @@ param_info* CParamUtils_GetParamInfo(wchar_t* param_name)
 	return (node == NULL) ? NULL : (param_info*)node->value;
 }
 
+// Convert an UTF-16 string in the ASCII range to a single byte string. 
+size_t wchar_to_char(char* dest_buff, size_t cb, const wchar_t* wide_str)
+{
+	char* start = dest_buff;
+	for (char* end = start + cb-1; dest_buff < end && (*wide_str & 0xFF) != 0; dest_buff++, wide_str++)
+		*dest_buff = *wide_str;
+
+	*dest_buff = 0;
+	return dest_buff - start;
+}
+
+// Like CParamUtils_GetParamInfo, but prints out an error message in the CE console on failure. 
+param_info* CParamUtils_GetParamInfoVerbose(wchar_t* param_name)
+{
+	param_info* res = CParamUtils_GetParamInfo(param_name);
+	if (res == NULL)
+	{
+		char cstr[512];
+		wchar_to_char(cstr, sizeof(cstr), param_name);
+		
+		char buffer[1024];
+		snprintf(buffer, sizeof(buffer), "print(\"CParamUtils Error: Param \\\"%s\\\" not found\")", cstr);
+		CELUA_ExecuteFunctionAsync(buffer, 0);
+	}
+	return res;
+}
+
 // Return the index of a param row given it's row ID (-1 if not found).
 int32_t CParamUtils_GetRowIndex(wchar_t* param_name, uint64_t row_id)
 {
@@ -344,6 +374,22 @@ int32_t CParamUtils_GetRowIndex(wchar_t* param_name, uint64_t row_id)
 	return (row_node == NULL) ? -1 : (int32_t)row_node->value;
 }
 
+// Like CParamUtils_GetRowIndex, but prints out an error message in the CE console on failure. 
+extern int32_t CParamUtils_GetRowIndexVerbose(wchar_t* param_name, uint64_t row_id)
+{
+	int32_t res = CParamUtils_GetRowIndex(param_name, row_id);
+	if (res == -1)
+	{
+		char cstr[512];
+		wchar_to_char(cstr, sizeof(cstr), param_name);
+
+		char buffer[1024];
+		snprintf(buffer, sizeof(buffer), "print(\"CParamUtils Error: Row ID %I64d of param \\\"%s\\\" not found\")", row_id, cstr);
+		CELUA_ExecuteFunctionAsync(buffer, 0);
+	}
+	return res;
+}
+
 // Get a pointer to the row data for a given param, by row ID. NULL if ID/param doesn't exist.
 void* CParamUtils_GetRowData(wchar_t* param_name, uint64_t row_id)
 {
@@ -352,6 +398,22 @@ void* CParamUtils_GetRowData(wchar_t* param_name, uint64_t row_id)
 
 	hm_node* row_node = hm_get_node(pinfo->row_id_map, (void*)row_id);
 	return (row_node == NULL) ? NULL : get_row_data(pinfo->table, (int32_t)row_node->value);
+}
+
+// Like CParamUtils_GetRowData, but prints out an error message in the CE console on failure. 
+extern void* CParamUtils_GetRowDataVerbose(wchar_t* param_name, uint64_t row_id)
+{
+	void* res = CParamUtils_GetRowData(param_name, row_id);
+	if (res == NULL)
+	{
+		char cstr[512];
+		wchar_to_char(cstr, sizeof(cstr), param_name);
+
+		char buffer[1024];
+		snprintf(buffer, sizeof(buffer), "print(\"CParamUtils Error: Row ID %I64d of param \\\"%s\\\" not found\")", row_id, cstr);
+		CELUA_ExecuteFunctionAsync(buffer, 0);
+	}
+	return res;
 }
 
 /* Memory patching system */
@@ -590,14 +652,15 @@ typedef struct _named_patch
 uint32_t NAMED_PATCH_UID_CTR = 0;
 named_patch* NAMED_PATCH_LL_HEAD = NULL;
 
+const char* CURRENT_PATCH_NAME = NULL;
+
 // Critical section object to make patching thread safe. Could be important
 // if a user attempts to execute multiple separate scripts at once.
 CRITICAL_SECTION PARAM_PATCHER_LOCK;
 
-// Create a new named patch with the given name, or grab the one on the top of the stack 
-// if the name matches. 
-// If this patch already exists but is not at the top of the stack, will return a null pointer.
-named_patch* CParamUtils_Internal_GetOrCreateNamedPatch(const char* name)
+// Create a new named patch with the given name.
+// If a patch already exists under this name, will return a null pointer.
+named_patch* CParamUtils_Internal_TryCreateNamedPatch(const char* name, BOOL debug)
 {
 	named_patch* curr = NAMED_PATCH_LL_HEAD, * prev = NULL;
 	for (; curr != NULL && strcmp(curr->name, name); curr = (prev = curr)->next);
@@ -614,10 +677,57 @@ named_patch* CParamUtils_Internal_GetOrCreateNamedPatch(const char* name)
 		patch->diffs = malloc(sizeof(void*) * NAMED_PATCH_INIT_DIFF_CAP);
 
 		NAMED_PATCH_LL_HEAD = patch;
+		CURRENT_PATCH_NAME = strdup(name);
 		return patch;
 	}
-	else if (prev == NULL) return curr;
-	else return NULL;
+	else if (debug)
+	{
+		char buffer[1024];
+		snprintf(buffer, sizeof(buffer), "print(\"CParamUtils Error: Tried to create new patch under existing name \\\"%s\\\"\")", name);
+		CELUA_ExecuteFunctionAsync(buffer, 0);
+	}
+	return NULL;
+}
+
+// Signify the current named patch is complete. Release the internal param patcher lock, and
+// prevents any future patches from being made under this name until the script is disabled. 
+extern void CParamUtils_Internal_FinalizeNamedPatch()
+{
+	if (CURRENT_PATCH_NAME != NULL)
+	{
+		free(CURRENT_PATCH_NAME);
+		CURRENT_PATCH_NAME = NULL;
+	}
+	LeaveCriticalSection(&PARAM_PATCHER_LOCK);
+}
+
+// Declare a new named param patch. This acquires a critical section, so CParamUtils_Internal_FinalizeNamedPatch 
+// MUST be called after all desired patches have been applied to release it.
+void CParamUtils_Internal_BeginNamedPatch(const char* patch_name, BOOL debug)
+{
+	// Don't let an idiot pass a null pointer as a patch name
+	if (patch_name == NULL) patch_name = "";
+
+	EnterCriticalSection(&PARAM_PATCHER_LOCK);
+
+	// Same patch is still in progress and this call is superfluous, release and do nothing
+	if (CURRENT_PATCH_NAME != NULL && !strcmp(patch_name, CURRENT_PATCH_NAME))
+		LeaveCriticalSection(&PARAM_PATCHER_LOCK);
+	else
+	{
+		// Different patch was in progress on this thread and was not Finalized(); do it for the user
+		if (CURRENT_PATCH_NAME != NULL) CParamUtils_Internal_FinalizeNamedPatch();
+		CParamUtils_Internal_TryCreateNamedPatch(patch_name, debug);
+	}
+}
+
+// If a previous call to BeginNamedPatch specified a valid name, returns the current patch object
+// instance. Otherwise, returns a null pointer.
+extern void* CParamUtils_Internal_GetPatchIns(BOOL debug)
+{
+	if (CURRENT_PATCH_NAME == NULL && debug) 
+		CELUA_ExecuteFunctionAsync("print(\"CParamUtils Error: Tried to patch params without an active named patch in progress\")", 0);
+	return (CURRENT_PATCH_NAME == NULL) ? NULL : NAMED_PATCH_LL_HEAD;
 }
 
 // Begin a memory patch, and return a pointer to the given param row's data.
@@ -644,37 +754,46 @@ extern void CParamUtils_Internal_FinalizeRowPatch(named_patch* patch, int32_t pa
 }
 
 // Attempts to restore a named param patch. Returns FALSE if the patch was not found.
-extern BOOL CParamUtils_Internal_RestorePatch(const char* name)
+extern BOOL CParamUtils_Internal_RestorePatch(const char* name, BOOL debug)
 {
+	// Don't let an idiot pass a null pointer as a patch name
+	if (name == NULL) name = "";
+
+	EnterCriticalSection(&PARAM_PATCHER_LOCK);
+
 	named_patch* curr = NAMED_PATCH_LL_HEAD, * prev = NULL;
 	for (; curr != NULL && strcmp(curr->name, name); curr = (prev = curr)->next);
 
-	if (curr == NULL) return FALSE;
+	if (curr != NULL) 
+	{
+		for (int i = 0; i < curr->diffs_num; i++)
+			mds_restore(curr->diff_stacks[i], curr->diffs[i]);
 
-	for (int i = 0; i < curr->diffs_num; i++)
-		mds_restore(curr->diff_stacks[i], curr->diffs[i]);
+		free(curr->diffs);
+		free(curr->diff_stacks);
+		free(curr->name);
 
-	free(curr->diffs);
-	free(curr->diff_stacks);
-	free(curr->name);
+		if (prev == NULL) NAMED_PATCH_LL_HEAD = curr->next;
+		else prev->next = curr->next;
 
-	if (prev == NULL) NAMED_PATCH_LL_HEAD = curr->next;
-	else prev->next = curr->next;
+		free(curr);
+	}
+	else if (debug)
+	{
+		char buffer[1024];
+		snprintf(buffer, sizeof(buffer), "print(\"CParamUtils Error: Patch \\\"%s\\\" cannot be restored, as it doesn't exist\")", name);
+		CELUA_ExecuteFunctionAsync(buffer, 0);
+	}
+	// User is trying to restore the same patch they are currently working on
+	// Remove it without leaving the critical section, to account for their call to End()
+	if (CURRENT_PATCH_NAME != NULL && !strcmp(CURRENT_PATCH_NAME, name))
+	{
+		free(CURRENT_PATCH_NAME);
+		CURRENT_PATCH_NAME = NULL;
+	}
 
-	free(curr);
-	return TRUE;
-}
-
-// Acquire the internal param patcher lock. This must be called before defining patches.
-extern void CParamUtils_Internal_AcquireLock()
-{
-	EnterCriticalSection(&PARAM_PATCHER_LOCK);
-}
-
-// Release the internal param patcher lock. This must called after defining patches.
-extern void CParamUtils_Internal_ReleaseLock()
-{
 	LeaveCriticalSection(&PARAM_PATCHER_LOCK);
+	return curr != NULL;
 }
 
 typedef struct _paramdef_metadata
