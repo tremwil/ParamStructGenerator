@@ -59,23 +59,30 @@ namespace ParamStructGenerator
             }
         }
 
-        public static string FieldTypeToStdInt(PARAMDEF.DefType defType)
+        public static string FieldTypeToStdInt(PARAMDEF.DefType defType, bool typedefs = false)
         {
-            switch (defType)
+            if (!typedefs)
             {
-                case PARAMDEF.DefType.u8:
-                case PARAMDEF.DefType.dummy8: return "uint8_t";
-                case PARAMDEF.DefType.s8: return "int8_t";
-                case PARAMDEF.DefType.u16: return "uint16_t";
-                case PARAMDEF.DefType.s16: return "int16_t";
-                case PARAMDEF.DefType.u32: return "uint32_t";
-                case PARAMDEF.DefType.s32: return "int32_t";
-                case PARAMDEF.DefType.f32: return "float";
+                switch (defType)
+                {
+                    case PARAMDEF.DefType.u8:
+                    case PARAMDEF.DefType.dummy8: return "uint8_t";
+                    case PARAMDEF.DefType.s8: return "int8_t";
+                    case PARAMDEF.DefType.u16: return "uint16_t";
+                    case PARAMDEF.DefType.s16: return "int16_t";
+                    case PARAMDEF.DefType.u32: return "uint32_t";
+                    case PARAMDEF.DefType.s32: return "int32_t";
+                    case PARAMDEF.DefType.f32: return "float";
 
-                case PARAMDEF.DefType.fixstr: return "char";
-                case PARAMDEF.DefType.fixstrW: return "wchar_t";
+                    case PARAMDEF.DefType.fixstr: return "char";
+                    case PARAMDEF.DefType.fixstrW: return "wchar_t";
+                }
+                return "unknown_type";
             }
-            return "unknown_type";
+            else
+            {
+                return defType.ToString();
+            }
         }
     }
 }

@@ -27,7 +27,7 @@ namespace ParamStructGenerator
     public class CSingleHeaderGen
     {
         public bool CEMode { get; set; } = false;
-        public IParamCodeGen CodeGen = new CParamCodeGen() { MultiFile = false };
+        public CParamCodeGen CodeGen = new CParamCodeGen() { MultiFile = false, ParamTypedefs = true };
 
         public void GenerateCode(string regulationPath, string paramdefFolder, string outputFolder)
         {
@@ -46,6 +46,20 @@ typedef unsigned int uint32_t;
 typedef long long int64_t;
 typedef unsigned long long uint64_t;
 typedef short wchar_t;
+");
+            if (CodeGen.ParamTypedefs) header.AppendLine(@"typedef char s8;
+typedef unsigned char u8;
+typedef short s16;
+typedef unsigned short u16;
+typedef int s32;
+typedef unsigned int u32;
+typedef long long s64;
+typedef unsigned long long u64;
+typedef char fixstr;
+typedef short fixstrW;
+typedef float f32;
+typedef double f64;
+typedef unsigned char dummy8;
 ");
             List<PARAMDEF> defs = new List<PARAMDEF>();
 
@@ -103,25 +117,43 @@ typedef short wchar_t;
             foreach (PARAMDEF def in defs)
             {
                 int fieldBitOffset = 0;
+                int bitfieldStartOffset = 0;
+                uint fieldCounter = 0;
                 uint numAddedField = 0;
 
-                foreach (PARAMDEF.Field field in def.Fields)
+                for (int i = 0; i < def.Fields.Count; i++)
                 {
-                    int fieldBitSize = (field.BitSize == -1) ? 8 * (ParamUtil.IsArrayType(field.DisplayType) ? ParamUtil.GetValueSize(field.DisplayType) * field.ArrayLength : ParamUtil.GetValueSize(field.DisplayType)) : field.BitSize;
+                    PARAMDEF.Field field = def.Fields[i];
+                    int fieldBitSize = (field.BitSize != -1) ?
+                        field.BitSize :
+                        8 * (ParamUtil.IsArrayType(field.DisplayType) ?
+                            ParamUtil.GetValueSize(field.DisplayType) * field.ArrayLength :
+                            ParamUtil.GetValueSize(field.DisplayType));
+
+                    // Entering a bitfield
+                    if (i == 0 || field.BitSize != -1 && def.Fields[i-1].BitSize == -1) 
+                        bitfieldStartOffset = fieldBitOffset;
+                    // Exiting a bitfield
+                    else if (i > 0 && field.BitSize == -1 && def.Fields[i-1].BitSize != -1)
+                    {
+                        int bitfieldTypeSz = 8 * ParamUtil.GetValueSize(def.Fields[i-1].DisplayType);
+                        fieldBitOffset += (bitfieldTypeSz - (fieldBitOffset - bitfieldStartOffset)) % bitfieldTypeSz;
+                    }
 
                     if (fieldBitSize > 1 && field.DisplayType != PARAMDEF.DefType.dummy8)
                     {
-                        numAddedField++;
+                        fieldCounter++;
                         while (fieldBitSize > 0)
                         {
                             int offset = fieldBitOffset / 64;
                             int maskBegin = fieldBitOffset % 64;
                             int maskSize = Math.Min(64 - (fieldBitOffset % 64), fieldBitSize);
-                            ulong mask = unchecked((1ul << maskSize) + (1ul >> maskSize) - 1ul) << maskBegin;
-                            bitmasks.Add(new FieldBitmask() { offset = (uint)offset * 8, bitmask = mask, uid = numAddedField });
+                            ulong mask = unchecked((1ul << maskSize) - (1ul >> maskSize) - 1ul) << maskBegin;
+                            bitmasks.Add(new FieldBitmask() { offset = (uint)offset * 8, bitmask = mask, uid = fieldCounter });
 
                             fieldBitSize -= maskSize;
                             fieldBitOffset += maskSize;
+                            numAddedField++;
                         }
                     }
                     else fieldBitOffset += fieldBitSize;
@@ -175,6 +207,7 @@ typedef short wchar_t;
                     }
                 }
             }
+
             return buff;
         }
 

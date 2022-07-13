@@ -11,7 +11,7 @@ namespace ParamStructGenerator
     {
         public string FileExtension => ".h";
         public bool MultiFile = true;
-
+        public bool ParamTypedefs = false;
         public string GenParamCode(PARAM param, string name, bool writeComments)
         {
             StringBuilder sb = new StringBuilder();
@@ -61,7 +61,7 @@ namespace ParamStructGenerator
                         sb.AppendLine($"\t// DESC: {field.Description}");
                 }
 
-                string fieldName = ParamdefUtils.FieldTypeToStdInt(field.DisplayType);
+                string fieldName = ParamdefUtils.FieldTypeToStdInt(field.DisplayType, ParamTypedefs);
                 bool isZeroSize = false;
 
                 StringBuilder fieldBuilder = new StringBuilder();

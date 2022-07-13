@@ -1,3 +1,6 @@
+// comment out for memory allocation debugging
+//#define ALLOC_DEBUG
+
 typedef char int8_t;
 typedef unsigned char uint8_t;
 typedef short int16_t;
@@ -18,10 +21,15 @@ typedef int BOOL;
 extern void* malloc(size_t size);
 extern void* calloc(size_t num, size_t size);
 extern void* realloc(void* ptr, size_t new_size);
+extern char* strdup(const char* str);
 extern void free(void* ptr);
+
+extern void* aligned_malloc(size_t size, size_t alignment);
+extern void* aligned_realloc(void* ptr, size_t new_size, size_t alignment);
+extern void aligned_free(void* ptr);
+
 extern void* memcpy(void* destination, const void* source, size_t num);
 extern void memset(void* dest, uint8_t val, size_t size);
-extern char* strdup(const char* str1);
 extern size_t strlen(const char* str);
 extern int strcmp(const char* s1, const char* s2);
 extern int wcscmp(const wchar_t* s1, const wchar_t* s2);
@@ -32,12 +40,87 @@ extern void CELUA_ExecuteFunctionAsync(char* luacode, void* param);
 typedef struct _CRITICAL_SECTION
 {
 	uint8_t reserved[40];
-} CRITICAL_SECTION, *LPCRITICAL_SECTION;
+} CRITICAL_SECTION, * LPCRITICAL_SECTION;
 
 extern void InitializeCriticalSection(LPCRITICAL_SECTION lpCriticalSection);
 extern void EnterCriticalSection(LPCRITICAL_SECTION lpCriticalSection);
 extern BOOL TryEnterCriticalSection(LPCRITICAL_SECTION lpCriticalSection);
 extern void LeaveCriticalSection(LPCRITICAL_SECTION lpCriticalSection);
+
+/* (de)allocator macros for debugging */
+
+static BOOL MEM_LOG_ENABLED = FALSE;
+
+#define MALLOC malloc
+#define CALLOC calloc
+#define REALLOC realloc
+#define STRDUP strdup
+#define FREE free
+
+#define ALIGNED_MALLOC aligned_malloc
+#define ALIGNED_REALLOC aligned_realloc
+#define ALIGNED_FREE aligned_free
+
+#ifdef ALLOC_DEBUG
+
+#define FUN_LOG1(fun, ret_type, arg_fmt, ret_fmt, arg1) \
+    ret_type __ret = fun(arg1); \
+	if (MEM_LOG_ENABLED) { \
+		char __buff[1024]; \
+		snprintf(__buff, sizeof(__buff), "print(\"" #fun "(" arg_fmt ") -> " ret_fmt "\")", arg1, __ret); \
+		CELUA_ExecuteFunctionAsync(__buff, 0); \
+	} \
+    return __ret; \
+
+
+#define FUN_LOG2(fun, ret_type, arg_fmt, ret_fmt, arg1, arg2) \
+    ret_type __ret = fun(arg1, arg2); \
+	if (MEM_LOG_ENABLED) { \
+		char __buff[1024]; \
+		snprintf(__buff, sizeof(__buff), "print(\"" #fun "(" arg_fmt ") -> " ret_fmt "\")", arg1, arg2, __ret); \
+		CELUA_ExecuteFunctionAsync(__buff, 0); \
+	} \
+    return __ret; \
+
+
+#define FUN_LOG3(fun, ret_type, arg_fmt, ret_fmt, arg1, arg2, arg3) \
+    ret_type __ret = fun(arg1, arg2, arg3); \
+	if (MEM_LOG_ENABLED) { \
+		char __buff[1024]; \
+		snprintf(__buff, sizeof(__buff), "print(\"" #fun "(" arg_fmt ") -> " ret_fmt "\")", arg1, arg2, arg3, __ret); \
+		CELUA_ExecuteFunctionAsync(__buff, 0); \
+	} \
+    return __ret; \
+
+#define FUN_LOG_VOID1(fun, arg_fmt, arg1) \
+    fun(arg1); \
+	if (MEM_LOG_ENABLED) { \
+		char __buff[1024]; \
+		snprintf(__buff, sizeof(__buff), "print(\"" #fun "(" arg_fmt ") -> void\")", arg1); \
+		CELUA_ExecuteFunctionAsync(__buff, 0); \
+	} \
+
+void* dbg_malloc(size_t size) { FUN_LOG1(malloc, void*, "%lld", "%p", size); }
+void* dbg_calloc(size_t num, size_t size) { FUN_LOG2(calloc, void*, "%lld, %lld", "%p", num, size); }
+void* dbg_realloc(void* ptr, size_t new_size) { FUN_LOG2(realloc, void*, "%p, %lld", "%p", ptr, new_size); }
+char* dbg_strdup(const char* str) { FUN_LOG1(strdup, char*, "%p", "%p", str); }
+void dbg_free(void* ptr) { FUN_LOG_VOID1(free, "%p", ptr); }
+
+void* dbg_aligned_malloc(size_t size, size_t alignment) { FUN_LOG2(aligned_malloc, void*, "%lld, %lld", "%p", size, alignment); }
+void* dbg_aligned_realloc(void* ptr, size_t new_size, size_t alignment) { FUN_LOG3(aligned_realloc, void*, "%p, %lld, %lld", "%p", ptr, new_size, alignment); };
+void dbg_aligned_free(void* ptr) { FUN_LOG_VOID1(aligned_free, "%p", ptr); }
+
+#define MALLOC dbg_malloc
+#define CALLOC dbg_calloc
+#define REALLOC dbg_realloc
+#define STRDUP dbg_strdup
+#define FREE dbg_free
+
+#define ALIGNED_MALLOC dbg_aligned_malloc
+#define ALIGNED_REALLOC dbg_aligned_realloc
+#define ALIGNED_FREE dbg_aligned_free
+
+#endif
 
 /* Game structs/classes */
 
@@ -123,7 +206,7 @@ typedef struct _CSRegulationManagerImp
 /* Simple fixed bucket size hashmap implementation to speed up param and row lookups */
 
 typedef uint64_t(*hash_fun)(void*);
-typedef BOOL (*eq_fun)(void*, void*);
+typedef BOOL(*eq_fun)(void*, void*);
 
 typedef struct _hm_node
 {
@@ -221,9 +304,9 @@ inline void* hm_get_val(hashmap* hm, void* key)
 {
 	hm_node* node = hm_get_node(hm, key);
 	return (node == NULL) ? NULL : node->value;
-}	
+}
 
-typedef BOOL (*hm_iterate_fun)(void*,void*);
+typedef BOOL(*hm_iterate_fun)(void*, void*);
 void hm_iterate(hashmap* hm, hm_iterate_fun f)
 {
 	for (size_t i = 0; i < hm->num_buckets; i++)
@@ -271,7 +354,7 @@ void hm_free(hashmap* hm)
 		{
 			if (hm->free_keys) free(node->key);
 			if (hm->free_values) free(node->value);
-			free(node);
+			FREE(node);
 		}
 	}
 	free(hm->buckets);
@@ -296,11 +379,11 @@ hashmap* PARAM_MAP = 0;
 
 // Callback receiving the param name and table, respectively.
 // Returning TRUE (1) will terminate the iteration.
-typedef BOOL (*param_iter_func)(wchar_t*, ParamTable*);
+typedef BOOL(*param_iter_func)(wchar_t*, ParamTable*);
 
 // Callback receiving the row ID and address, respectively.
 // Returning TRUE (1) will terminate the iteration.
-typedef BOOL (*row_iter_func)(uint64_t, void*);
+typedef BOOL(*row_iter_func)(uint64_t, void*);
 
 // Iterate over game params.
 void CParamUtils_ParamIterator(param_iter_func cb)
@@ -337,18 +420,18 @@ param_info* CParamUtils_GetParamInfo(wchar_t* param_name)
 	return (node == NULL) ? NULL : (param_info*)node->value;
 }
 
-// Convert an UTF-16 string in the ASCII range to a single byte string. 
+// Convert an UTF-16 string in the ASCII range to a single byte string.
 size_t wchar_to_char(char* dest_buff, size_t cb, const wchar_t* wide_str)
 {
 	char* start = dest_buff;
-	for (char* end = start + cb-1; dest_buff < end && (*wide_str & 0xFF) != 0; dest_buff++, wide_str++)
+	for (char* end = start + cb - 1; dest_buff < end && (*wide_str & 0xFF) != 0; dest_buff++, wide_str++)
 		*dest_buff = *wide_str;
 
 	*dest_buff = 0;
 	return dest_buff - start;
 }
 
-// Like CParamUtils_GetParamInfo, but prints out an error message in the CE console on failure. 
+// Like CParamUtils_GetParamInfo, but prints out an error message in the CE console on failure.
 param_info* CParamUtils_GetParamInfoVerbose(wchar_t* param_name)
 {
 	param_info* res = CParamUtils_GetParamInfo(param_name);
@@ -356,7 +439,7 @@ param_info* CParamUtils_GetParamInfoVerbose(wchar_t* param_name)
 	{
 		char cstr[512];
 		wchar_to_char(cstr, sizeof(cstr), param_name);
-		
+
 		char buffer[1024];
 		snprintf(buffer, sizeof(buffer), "print(\"CParamUtils Error: Param \\\"%s\\\" not found\")", cstr);
 		CELUA_ExecuteFunctionAsync(buffer, 0);
@@ -374,7 +457,7 @@ int32_t CParamUtils_GetRowIndex(wchar_t* param_name, uint64_t row_id)
 	return (row_node == NULL) ? -1 : (int32_t)row_node->value;
 }
 
-// Like CParamUtils_GetRowIndex, but prints out an error message in the CE console on failure. 
+// Like CParamUtils_GetRowIndex, but prints out an error message in the CE console on failure.
 extern int32_t CParamUtils_GetRowIndexVerbose(wchar_t* param_name, uint64_t row_id)
 {
 	int32_t res = CParamUtils_GetRowIndex(param_name, row_id);
@@ -400,7 +483,7 @@ void* CParamUtils_GetRowData(wchar_t* param_name, uint64_t row_id)
 	return (row_node == NULL) ? NULL : get_row_data(pinfo->table, (int32_t)row_node->value);
 }
 
-// Like CParamUtils_GetRowData, but prints out an error message in the CE console on failure. 
+// Like CParamUtils_GetRowData, but prints out an error message in the CE console on failure.
 extern void* CParamUtils_GetRowDataVerbose(wchar_t* param_name, uint64_t row_id)
 {
 	void* res = CParamUtils_GetRowData(param_name, row_id);
@@ -423,51 +506,51 @@ extern void* CParamUtils_GetRowDataVerbose(wchar_t* param_name, uint64_t row_id)
 void asm_defs()
 {
 	__asm__ __volatile__("
-	
-	memxor_simd:
-		xorq %rax, %rax
-	loop_xor_simd:
-		movaps (%rcx, %rax), %xmm0
-		pxor (%rdx, %rax), %xmm0
-		movaps %xmm0, (%rcx, %rax)
-		addq $0x10, %rax
-		cmpq %rax, %r8
+
+		memxor_simd:
+	xorq % rax, % rax
+		loop_xor_simd :
+	movaps(% rcx, % rax), % xmm0
+		pxor(% rdx, % rax), % xmm0
+		movaps % xmm0, (% rcx, % rax)
+		addq $0x10, % rax
+		cmpq % rax, % r8
 		ja loop_xor_simd
 		ret
 
-	memor_simd:
-		xorq %rax, %rax
-	loop_or_simd:
-		movaps (%rcx, %rax), %xmm0
-		por (%rdx, %rax), %xmm0
-		movaps %xmm0, (%rcx, %rax)
-		addq $0x10, %rax
-		cmpq %rax, %r8
+		memor_simd :
+	xorq % rax, % rax
+		loop_or_simd :
+	movaps(% rcx, % rax), % xmm0
+		por(% rdx, % rax), % xmm0
+		movaps % xmm0, (% rcx, % rax)
+		addq $0x10, % rax
+		cmpq % rax, % r8
 		ja loop_or_simd
 		ret
 
-	memandn_simd:
-		xorq %rax, %rax
-	loop_andn_simd:
-		movaps (%rcx, %rax), %xmm0
-		pandn (%rdx, %rax), %xmm0
-		movaps %xmm0, (%rcx, %rax)
-		addq $0x10, %rax
-		cmpq %rax, %r8
+		memandn_simd :
+	xorq % rax, % rax
+		loop_andn_simd :
+	movaps(% rcx, % rax), % xmm0
+		pandn(% rdx, % rax), % xmm0
+		movaps % xmm0, (% rcx, % rax)
+		addq $0x10, % rax
+		cmpq % rax, % r8
 		ja loop_andn_simd
 		ret
 
-	memand_simd:
-		xorq %rax, %rax
-	loop_and_simd:
-		movaps (%rcx, %rax), %xmm0
-		pand (%rdx, %rax), %xmm0
-		movaps %xmm0, (%rcx, %rax)
-		addq $0x10, %rax
-		cmpq %rax, %r8
+		memand_simd :
+	xorq % rax, % rax
+		loop_and_simd :
+	movaps(% rcx, % rax), % xmm0
+		pand(% rdx, % rax), % xmm0
+		movaps % xmm0, (% rcx, % rax)
+		addq $0x10, % rax
+		cmpq % rax, % r8
 		ja loop_and_simd
 		ret"
-	);
+		);
 }
 extern void memxor_simd(void* dest, void* src, size_t len);
 extern void memor_simd(void* dest, void* src, size_t len);
@@ -475,17 +558,6 @@ extern void memandn_simd(void* dest, void* src, size_t len);
 extern void memand_simd(void* dest, void* src, size_t len);
 
 #define align16(n) (((n) + 0xF) & ~(uint64_t)0xF)
-#define free16(ptr) if (ptr) free(((void**)ptr)[-1])
-
-// 16-byte aligned memory allocation
-void* malloc16(size_t size)
-{
-	void* mem = malloc(size + sizeof(void*) + 0xF);
-	if (mem == NULL) return NULL;
-	void* ptr = align16((uintptr_t)mem + sizeof(void*));
-	((void**)ptr)[-1] = mem;
-	return ptr;
-}
 
 typedef struct _field_bitmask
 {
@@ -522,12 +594,12 @@ mem_diff_stack* mds_init(mem_diff_stack* mds, void* live_mem, size_t region_size
 	mds->diff_stack_top = NULL;
 	mds->live_mem = live_mem;
 	mds->aligned_live_mem = (uintptr_t)live_mem & ~(uintptr_t)0xF;
-	mds->temp_buffer = malloc16(mds->region_size);
+	mds->temp_buffer = ALIGNED_MALLOC(mds->region_size, 16);
 	return mds;
 }
 
 // Register a new patch to the memory region. Will return a pointer to the live memory for modifications.
-// Make sure to call mds_push_end immediately after modifications to save the diff. 
+// Make sure to call mds_push_end immediately after modifications to save the diff.
 void* mds_push_begin(mem_diff_stack* mds)
 {
 	memcpy(mds->temp_buffer, mds->aligned_live_mem, mds->region_size);
@@ -535,7 +607,7 @@ void* mds_push_begin(mem_diff_stack* mds)
 }
 
 // Finalize pushing a new memory change to the stack. If a new diff needs to be created,
-// will return a pointer to it. Otherwise, returns NULL. 
+// will return a pointer to it. Otherwise, returns NULL.
 mem_diff* mds_push_end(mem_diff_stack* mds, uint32_t patch_uid)
 {
 	memxor_simd(mds->temp_buffer, mds->aligned_live_mem, mds->region_size);
@@ -547,10 +619,11 @@ mem_diff* mds_push_end(mem_diff_stack* mds, uint32_t patch_uid)
 	// Otherwise, allocate a new block
 	else
 	{
-		new_diff = malloc(sizeof(mem_diff));
+		new_diff = MALLOC(sizeof(mem_diff));
 		new_diff->next = mds->diff_stack_top;
-		new_diff->diff_mask = malloc16(mds->region_size);
-		new_diff->field_mask = malloc16(mds->region_size);
+		new_diff->diff_mask = ALIGNED_MALLOC(mds->region_size, 16);
+		new_diff->field_mask = ALIGNED_MALLOC(mds->region_size, 16);
+		new_diff->patch_uid = patch_uid;
 		memcpy(new_diff->diff_mask, mds->temp_buffer, mds->region_size);
 		memcpy(new_diff->field_mask, mds->temp_buffer, mds->region_size);
 		mds->diff_stack_top = new_diff;
@@ -563,24 +636,25 @@ mem_diff* mds_push_end(mem_diff_stack* mds, uint32_t patch_uid)
 		uint8_t* diff_mask = (uint8_t*)mds->diff_stack_top->diff_mask + align_offset;
 		uint8_t* field_mask = (uint8_t*)mds->diff_stack_top->field_mask + align_offset;
 
-		for (int i = 0; fields[i].uid != 0; i++)
+		for (int i = 0; fields[i].uid != 0;)
 		{
 			if (*(uint64_t*)(diff_mask + fields[i].offset) & fields[i].bitmask)
 			{
 				*(uint64_t*)(field_mask + fields[i].offset) |= fields[i].bitmask;
 
-				for (int j = i - 1; j >= 0 && fields[j].uid == fields[i].uid; j++)
+				for (int j = i - 1; j >= 0 && fields[j].uid == fields[i].uid; j--)
 					*(uint64_t*)(field_mask + fields[j].offset) |= fields[j].bitmask;
 
 				while (fields[i].uid == fields[++i].uid)
 					*(uint64_t*)(field_mask + fields[i].offset) |= fields[i].bitmask;
 			}
+			else i++;
 		}
 	}
 	return new_diff;
 }
 
-// Undo all changes in a given diff which are visible to the live object. 
+// Undo all changes in a given diff which are visible to the live object.
 // "visible" regions are those not modified by a later memory edit.
 // If the diff is on the top of the stack, O(region_size). Otherwise,
 // O(depth * region_size). Returns TRUE if diff was found, FALSE otherwise.
@@ -588,14 +662,14 @@ BOOL mds_restore(mem_diff_stack* mds, mem_diff* diff)
 {
 	if (mds->diff_stack_top == NULL) return FALSE;
 
-	// If on top of stack, immediately apply changes to live memory and free the block
+	// If on top of stack, immediately apply changes to live memory and FREE the block
 	if (mds->diff_stack_top == diff)
 	{
 		memxor_simd(mds->aligned_live_mem, diff->diff_mask, mds->region_size);
-		free16(diff->diff_mask);
-		free16(diff->field_mask);
+		ALIGNED_FREE(diff->diff_mask);
+		ALIGNED_FREE(diff->field_mask);
 		mds->diff_stack_top = diff->next;
-		free(diff);
+		FREE(diff);
 		return TRUE;
 	}
 
@@ -610,7 +684,7 @@ BOOL mds_restore(mem_diff_stack* mds, mem_diff* diff)
 	// Merge changes into the previous block
 	memxor_simd(prev->diff_mask, curr->diff_mask, mds->region_size);
 	memor_simd(prev->field_mask, curr->field_mask, mds->region_size);
-	
+
 	// Remove parts of merged changes that will be reverted now, i.e. only keep merged "hidden" changes
 	memand_simd(prev->diff_mask, mds->temp_buffer, mds->region_size);
 	memand_simd(prev->field_mask, mds->temp_buffer, mds->region_size);
@@ -621,9 +695,9 @@ BOOL mds_restore(mem_diff_stack* mds, mem_diff* diff)
 
 	// Free the unused block
 	prev->next = curr->next;
-	free16(curr->diff_mask);
-	free16(curr->field_mask);
-	free(curr);
+	ALIGNED_FREE(curr->diff_mask);
+	ALIGNED_FREE(curr->field_mask);
+	FREE(curr);
 
 	return TRUE;
 }
@@ -648,7 +722,7 @@ typedef struct _named_patch
 
 #define NAMED_PATCH_INIT_DIFF_CAP 0x100
 
-// Stack of named param patches defined by the user. 
+// Stack of named param patches defined by the user.
 uint32_t NAMED_PATCH_UID_CTR = 0;
 named_patch* NAMED_PATCH_LL_HEAD = NULL;
 
@@ -667,17 +741,17 @@ named_patch* CParamUtils_Internal_TryCreateNamedPatch(const char* name, BOOL deb
 
 	if (curr == NULL)
 	{
-		named_patch* patch = malloc(sizeof(named_patch));
+		named_patch* patch = MALLOC(sizeof(named_patch));
 		patch->next = NAMED_PATCH_LL_HEAD;
-		patch->name = strdup(name);
+		patch->name = STRDUP(name);
 		patch->uid = ++NAMED_PATCH_UID_CTR;
 		patch->diffs_num = 0;
 		patch->diffs_cap = NAMED_PATCH_INIT_DIFF_CAP;
-		patch->diff_stacks = malloc(sizeof(mem_diff_stack*) * NAMED_PATCH_INIT_DIFF_CAP);
-		patch->diffs = malloc(sizeof(void*) * NAMED_PATCH_INIT_DIFF_CAP);
+		patch->diff_stacks = MALLOC(sizeof(mem_diff_stack*) * NAMED_PATCH_INIT_DIFF_CAP);
+		patch->diffs = MALLOC(sizeof(void*) * NAMED_PATCH_INIT_DIFF_CAP);
 
 		NAMED_PATCH_LL_HEAD = patch;
-		CURRENT_PATCH_NAME = strdup(name);
+		CURRENT_PATCH_NAME = STRDUP(name);
 		return patch;
 	}
 	else if (debug)
@@ -690,18 +764,18 @@ named_patch* CParamUtils_Internal_TryCreateNamedPatch(const char* name, BOOL deb
 }
 
 // Signify the current named patch is complete. Release the internal param patcher lock, and
-// prevents any future patches from being made under this name until the script is disabled. 
+// prevents any future patches from being made under this name until the script is disabled.
 extern void CParamUtils_Internal_FinalizeNamedPatch()
 {
 	if (CURRENT_PATCH_NAME != NULL)
 	{
-		free(CURRENT_PATCH_NAME);
+		FREE(CURRENT_PATCH_NAME);
 		CURRENT_PATCH_NAME = NULL;
 	}
 	LeaveCriticalSection(&PARAM_PATCHER_LOCK);
 }
 
-// Declare a new named param patch. This acquires a critical section, so CParamUtils_Internal_FinalizeNamedPatch 
+// Declare a new named param patch. This acquires a critical section, so CParamUtils_Internal_FinalizeNamedPatch
 // MUST be called after all desired patches have been applied to release it.
 void CParamUtils_Internal_BeginNamedPatch(const char* patch_name, BOOL debug)
 {
@@ -725,7 +799,7 @@ void CParamUtils_Internal_BeginNamedPatch(const char* patch_name, BOOL debug)
 // instance. Otherwise, returns a null pointer.
 extern void* CParamUtils_Internal_GetPatchIns(BOOL debug)
 {
-	if (CURRENT_PATCH_NAME == NULL && debug) 
+	if (CURRENT_PATCH_NAME == NULL && debug)
 		CELUA_ExecuteFunctionAsync("print(\"CParamUtils Error: Tried to patch params without an active named patch in progress\")", 0);
 	return (CURRENT_PATCH_NAME == NULL) ? NULL : NAMED_PATCH_LL_HEAD;
 }
@@ -736,7 +810,7 @@ void* CParamUtils_Internal_BeginRowPatch(int32_t param_index, int32_t row_index)
 	return mds_push_begin(&MEM_DIFFS[param_index][row_index]);
 }
 
-// Call immediately after having called BeginPatch and having modified the returned param row. 
+// Call immediately after having called BeginPatch and having modified the returned param row.
 extern void CParamUtils_Internal_FinalizeRowPatch(named_patch* patch, int32_t param_index, int32_t row_index)
 {
 	mem_diff* diff = mds_push_end(&MEM_DIFFS[param_index][row_index], patch->uid);
@@ -745,8 +819,8 @@ extern void CParamUtils_Internal_FinalizeRowPatch(named_patch* patch, int32_t pa
 		if (patch->diffs_num == patch->diffs_cap)
 		{
 			patch->diffs_cap *= 2;
-			patch->diffs = realloc(patch->diffs, sizeof(mem_diff*) * patch->diffs_cap);
-			patch->diff_stacks = realloc(patch->diff_stacks, sizeof(mem_diff_stack*) * patch->diffs_cap);
+			patch->diffs = REALLOC(patch->diffs, sizeof(mem_diff*) * patch->diffs_cap);
+			patch->diff_stacks = REALLOC(patch->diff_stacks, sizeof(mem_diff_stack*) * patch->diffs_cap);
 		}
 		patch->diffs[patch->diffs_num] = diff;
 		patch->diff_stacks[patch->diffs_num++] = &MEM_DIFFS[param_index][row_index];
@@ -764,19 +838,19 @@ extern BOOL CParamUtils_Internal_RestorePatch(const char* name, BOOL debug)
 	named_patch* curr = NAMED_PATCH_LL_HEAD, * prev = NULL;
 	for (; curr != NULL && strcmp(curr->name, name); curr = (prev = curr)->next);
 
-	if (curr != NULL) 
+	if (curr != NULL)
 	{
 		for (int i = 0; i < curr->diffs_num; i++)
 			mds_restore(curr->diff_stacks[i], curr->diffs[i]);
 
-		free(curr->diffs);
-		free(curr->diff_stacks);
-		free(curr->name);
+		FREE(curr->diffs);
+		FREE(curr->diff_stacks);
+		FREE(curr->name);
 
 		if (prev == NULL) NAMED_PATCH_LL_HEAD = curr->next;
 		else prev->next = curr->next;
 
-		free(curr);
+		FREE(curr);
 	}
 	else if (debug)
 	{
@@ -788,7 +862,7 @@ extern BOOL CParamUtils_Internal_RestorePatch(const char* name, BOOL debug)
 	// Remove it without leaving the critical section, to account for their call to End()
 	if (CURRENT_PATCH_NAME != NULL && !strcmp(CURRENT_PATCH_NAME, name))
 	{
-		free(CURRENT_PATCH_NAME);
+		FREE(CURRENT_PATCH_NAME);
 		CURRENT_PATCH_NAME = NULL;
 	}
 
@@ -802,16 +876,16 @@ typedef struct _paramdef_metadata
 	uint32_t field_bitmask_offset;
 } paramdef_metadata;
 
-// Pointer to an array of paramdef metadata structs, set by an external lua script. 
-// The param patcher will still work without this data, but expect undefined behavior 
+// Pointer to an array of paramdef metadata structs, set by an external lua script.
+// The param patcher will still work without this data, but expect undefined behavior
 // when attempting to resolve patches to the same field out-of-order.
 extern paramdef_metadata PARAMDEF_META[1];
 
-// Search the paramdef metadata array for a field mask for the given paramdef. 
+// Search the paramdef metadata array for a field mask for the given paramdef.
 // return NULL if not found.
 field_bitmask* get_field_mask(const char* def_name)
 {
-	if (PARAMDEF_META == NULL) return NULL;
+	if (PARAMDEF_META == 1) return NULL;
 
 	for (int i = 0; PARAMDEF_META[i].name_offset != 0; i++)
 	{
@@ -825,19 +899,19 @@ field_bitmask* get_field_mask(const char* def_name)
 void CParamUtils_Init()
 {
 	if (CSRegulationManager == 0 || PARAM_MAP != 0) return;
-	
+
 	InitializeCriticalSection(&PARAM_PATCHER_LOCK);
 
 	uint64_t num_params = CSRegulationManager->param_list_end - CSRegulationManager->param_list_begin;
 	PARAM_MAP = hm_create(2 * num_params, (hash_fun)wstr_hash, (eq_fun)wstr_eq, FALSE, FALSE);
-	MEM_DIFFS = calloc(num_params, sizeof(mem_diff_stack*));
+	MEM_DIFFS = CALLOC(num_params, sizeof(mem_diff_stack*));
 
 	for (size_t i = 0; i < num_params; i++)
 	{
 		ParamResCap* res_cap = CSRegulationManager->param_list_begin[i];
 		ParamTable* tbl = res_cap->param_header->param_table;
 
-		param_info* pinfo = malloc(sizeof(param_info));
+		param_info* pinfo = MALLOC(sizeof(param_info));
 		pinfo->name = dlw_c_str(&res_cap->param_name);
 		pinfo->index = i;
 		pinfo->row_size = get_param_size(tbl);
@@ -848,7 +922,7 @@ void CParamUtils_Init()
 		if (pinfo->row_size > 0)
 		{
 			field_bitmask* fbm = get_field_mask(pinfo->type);
-			MEM_DIFFS[i] = malloc(sizeof(mem_diff_stack) * tbl->num_rows);
+			MEM_DIFFS[i] = MALLOC(sizeof(mem_diff_stack) * tbl->num_rows);
 			for (int j = 0; j < tbl->num_rows; j++)
 			{
 				mds_init(&MEM_DIFFS[i][j], get_row_data(tbl, j), pinfo->row_size, fbm);
@@ -858,4 +932,6 @@ void CParamUtils_Init()
 
 		hm_set(PARAM_MAP, pinfo->name, pinfo);
 	}
+	// Enable memory (de)allocation logging after setup is complete
+	MEM_LOG_ENABLED = TRUE;
 }
