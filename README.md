@@ -1,7 +1,7 @@
 # ParamStructGenerator
 Automatically generate C/C++ structs from XML paramdefs and a regulation file. Super untested, the only thing I made sure of is that they compiled with msvc. Right now it will only work for ER as the regulation parsing was hardcoded, but it should be easy to modify it for other games.
 
-### [Download the headers (ER paramdefs only)](https://github.com/tremwil/ParamStructGenerator/blob/master/pre_generated_headers.zip?raw=true)
+### ~~[Download the headers (ER paramdefs only)](https://github.com/tremwil/ParamStructGenerator/blob/master/pre_generated_headers.zip?raw=true)~~ Outdated, generate yourself for now
 
 # Planned features (mabye)
 - Turn this into a proper command-line tool
