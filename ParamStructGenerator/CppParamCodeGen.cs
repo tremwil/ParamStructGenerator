@@ -24,7 +24,8 @@ namespace ParamStructGenerator
             if (writeComments) sb.AppendLine($@"// Type: {param.ParamType}");
             sb.AppendLine($@"struct {name} : {param.ParamType} {{
     static constexpr const char* param_type = ""{param.ParamType}"";
-    static constexpr const wchar_t* param_name = L""{name}"";
+    static constexpr const char* param_name = ""{name}"";
+    static constexpr const wchar_t* param_namew = L""{name}"";
 }};
 ");
             if (param.DetectedSize != -1)
