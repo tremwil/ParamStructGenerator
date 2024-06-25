@@ -1,48 +1,11 @@
 #ifndef CPARAMUTILS_H
 #define CPARAMUTILS_H
 
-typedef char int8_t;
-typedef unsigned char uint8_t;
-typedef short int16_t;
-typedef unsigned short uint16_t;
-typedef int int32_t;
-typedef unsigned int uint32_t;
-typedef long long int64_t;
-typedef unsigned long long uint64_t;
-typedef short wchar_t;
-typedef uint64_t size_t;
-typedef int BOOL;
+#include <stddef.h>
+#include <stdlib.h>
+#include <string.h>
 
-// Not really required for interfacing with CParamUtils, but nice to have in general
-extern void* malloc(size_t size);
-extern void* calloc(size_t num, size_t size);
-extern void* realloc(void* ptr, size_t new_size);
-extern void free(void* ptr);
-extern void* memcpy(void* destination, const void* source, size_t num);
-extern void memset(void* dest, uint8_t val, size_t size);
-extern char* strdup(const char* str1);
-extern size_t strlen(const char* str);
-extern int strcmp(const char* s1, const char* s2);
-extern int wcscmp(const wchar_t* s1, const wchar_t* s2);
-
-typedef struct _ParamRowInfo
-{
-	uint64_t row_id; // ID of param row
-	uint64_t param_offset; // Offset of pointer to param data relative to parent table
-	uint64_t param_end_offset; // Seems to point to end of ParamTable struct
-} ParamRowInfo;
-
-typedef struct _ParamTable
-{
-	uint8_t pad00[0x00A];
-	uint16_t num_rows; // Number of rows in param table
-
-	uint8_t pad01[0x004];
-	uint64_t param_type_offset; // Offset of param type string from the beginning of this struct
-
-	uint8_t pad02[0x028];
-	ParamRowInfo rows[0]; // Array of row information structs
-} ParamTable;
+#include "param_containers.h"
 
 // struct holding processed game param information
 typedef struct _param_info
@@ -57,17 +20,17 @@ typedef struct _param_info
 
 // Callback receiving the param name and table, respectively.
 // Returning TRUE (1) will terminate the iteration.
-typedef BOOL (*param_iter_func)(wchar_t*, ParamTable*);
+typedef bool (*param_iter_func)(wchar_t*, ParamTable*);
 
 // Callback receiving the row ID and address, respectively.
 // Returning TRUE (1) will terminate the iteration.
-typedef BOOL (*row_iter_func)(uint64_t, void*);
+typedef bool (*row_iter_func)(uint64_t, void*);
 
 // Iterate over game params.
 extern void CParamUtils_ParamIterator(param_iter_func cb);
 
 // Iterate over the rows of a param. Returns FALSE (0) if param doesn't exist.
-extern BOOL CParamUtils_RowIterator(wchar_t* param_name, row_iter_func cb);
+extern bool CParamUtils_RowIterator(wchar_t* param_name, row_iter_func cb);
 
 // Get a pointer to processed param info given a game param. NULL if param doesn't exist.
 extern param_info* CParamUtils_GetParamInfo(wchar_t* param_name);
@@ -91,7 +54,7 @@ extern void* CParamUtils_GetRowDataVerbose(wchar_t* param_name, uint64_t row_id)
 
 // If a previous call to BeginNamedPatch specified a valid name, returns the current patch object
 // instance. Otherwise, returns a null pointer.
-extern void* CParamUtils_Internal_GetPatchIns(BOOL debug);
+extern void* CParamUtils_Internal_GetPatchIns(bool debug);
 
 // Begin a memory patch, and return a pointer to the given param row's data.
 extern void* CParamUtils_Internal_BeginRowPatch(int32_t param_index, int32_t row_index);
@@ -100,11 +63,11 @@ extern void* CParamUtils_Internal_BeginRowPatch(int32_t param_index, int32_t row
 extern void CParamUtils_Internal_FinalizeRowPatch(void* h_patch, int32_t param_index, int32_t row_index);
 
 // Attempts to restore a named param patch. Returns FALSE if the patch was not found.
-extern BOOL CParamUtils_Internal_RestorePatch(const char* name, BOOL debug);
+extern BOOL CParamUtils_Internal_RestorePatch(const char* name, bool debug);
 
 // Declare a new named param patch. This acquires a critical section, so CParamUtils_Internal_FinalizeNamedPatch 
 // MUST be called after all desired patches have been applied to release it.
-extern void CParamUtils_Internal_BeginNamedPatch(const char* name, BOOL debug);
+extern void CParamUtils_Internal_BeginNamedPatch(const char* name, bool debug);
 
 // Signify the current named patch is complete. Release the internal param patcher lock, and
 // prevents any future patches from being made under this name until the script is disabled. 

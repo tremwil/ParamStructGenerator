@@ -1,0 +1,32 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows10.0.22000.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <SupportedOSPlatformVersion>7.0</SupportedOSPlatformVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="DotNext">
+      <HintPath>bin\Release\net8.0-windows10.0.22000.0\DotNext.dll</HintPath>
+    </Reference>
+    <Reference Include="DotNext.IO">
+      <HintPath>bin\Release\net8.0-windows10.0.22000.0\DotNext.IO.dll</HintPath>
+    </Reference>
+    <Reference Include="DotNext.Unsafe">
+      <HintPath>bin\Release\net8.0-windows10.0.22000.0\DotNext.Unsafe.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Toolkit.HighPerformance">
+      <HintPath>bin\Release\net8.0-windows10.0.22000.0\Microsoft.Toolkit.HighPerformance.dll</HintPath>
+    </Reference>
+    <Reference Include="SoulsFormats">
+      <HintPath>..\ParamStructGenerator\SoulsFormats\SoulsFormats.dll</HintPath>
+    </Reference>
+    <Reference Include="ZstdNet">
+      <HintPath>bin\Release\net8.0-windows10.0.22000.0\ZstdNet.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+</Project>
